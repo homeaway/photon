@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+
+    <!-- Propagates changes made to the level of any logback-classic logger
+        onto the java.util.logging framework without the performance hiccups as of
+        version 0.9.25 -->
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator" />
+
+    <!-- Standard out console appender -->
+    <appender name="Stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%date{ISO8601}]\(%t\)\([%X{requestMarker}]\) %p %logger{0} - %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Main file appender -->
+    <root level="WARN">
+        <appender-ref ref="Stdout" />
+    </root>
+</configuration>

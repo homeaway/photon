@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Puppy Crawl//DTD Check Configuration 1.2//EN"
+        "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
+
+<module name="Checker">
+    <module name="FileTabCharacter"/>
+    <module name="RegexpMultiline">
+        <!-- match any call to TransformerFactory.newInstance(), ignoring whitespace -->
+        <property name="format" value="\bTransformerFactory\s*\.\s*newInstance\(\s*\)"/>
+        <property name="maximum" value="0" />
+        <property name="message" value="Do not use TransformerFactory.newInstance(). Either use ApiTransformerFactory.newInstance() or use TransformerFactory.newInstance(String,ClassLoader)."/>
+    </module>
+    <module name="RegexpMultiline">
+        <!-- match any call to org.hamcrest.CoreMatchers, ignoring whitespace -->
+        <property name="format" value="\borg\s*\.\s*hamcrest\s*\.\s*CoreMatchers\b"/>
+        <property name="maximum" value="0" />
+        <property name="message" value="Use org.hamcrest.Matchers (from hamcrest-library) instead of org.hamcrest.CoreMatchers (from hamcrest-core)."/>
+    </module>
+    <module name="TreeWalker">
+        <property name="cacheFile" value="target/cachefile"/>
+        <!-- Requires unused imports to be cleaned up -->
+        <module name="UnusedImports">
+            <property name="processJavadoc" value="true"/>
+        </module>
+    </module>
+    <module name="SuppressWithNearbyCommentFilter">
+        <property name="commentFormat" value="CHECKSTYLE IGNORE (\w+) FOR NEXT (\d+) LINES"/>
+        <property name="checkFormat" value="$1"/>
+        <property name="influenceFormat" value="$2"/>
+    </module>
+</module>
