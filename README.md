@@ -1,4 +1,9 @@
-# Photon
+Photon [![Build Status][build-icon]][build-link]
+==============================
+                        
+[build-icon]: https://travis-ci.org/homeaway/photon.svg?branch=master
+[build-link]: https://travis-ci.org/homeaway/photon
+
 An event sourcing framework built on top of Apache Cassandra allowing horizontally scalable throughput and native cross data-center
 replication.
 
