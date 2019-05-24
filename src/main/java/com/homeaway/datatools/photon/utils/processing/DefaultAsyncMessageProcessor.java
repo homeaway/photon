@@ -16,16 +16,14 @@
 package com.homeaway.datatools.photon.utils.processing;
 
 import com.google.common.collect.Maps;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -34,19 +32,19 @@ import java.util.concurrent.locks.ReentrantLock;
 @Slf4j
 public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends ProcessingEvent<T>, T extends Comparable> implements AsyncMessageProcessor<K, V, T> {
 
-    private final Lock fullLock = new ReentrantLock();
-    private final Condition fullCondition = fullLock.newCondition();
+    private final Lock lock = new ReentrantLock();
+    private final Condition fullCondition = lock.newCondition();
+    private final Condition emptyCondition = lock.newCondition();
     private final ExecutorService executorService;
-    private final ScheduledExecutorService scheduledExecutorService;
+    private final Executor mainExecutor;
     private final ConcurrentMap<String, EventQueueMap<V>> eventQueueMapMap;
     private final ConcurrentMap<String, K> eventQueueKeyMap;
     private final MessageEventHandler<K, V> eventHandler;
     private final ProcessorManifest<K, V, T> processorManifest;
     private final LongAdder count;
+    private volatile boolean active;
     private volatile Duration processingLoopInterval;
     private volatile int maxEvents;
-
-    private ScheduledFuture<?> scheduledFuture;
 
     public DefaultAsyncMessageProcessor(final MessageEventHandler<K, V> eventHandler) {
         this(eventHandler, null);
@@ -65,12 +63,12 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
     public DefaultAsyncMessageProcessor(final MessageEventHandler<K, V> eventHandler,
                                         final ProcessorManifest<K, V, T> processorManifest,
                                         int maxEvents) {
-        this(Executors.newFixedThreadPool(150), Executors.newScheduledThreadPool(5), Maps.newConcurrentMap(), Maps.newConcurrentMap(),
+        this(Executors.newFixedThreadPool(150), Executors.newSingleThreadExecutor(), Maps.newConcurrentMap(), Maps.newConcurrentMap(),
                 eventHandler, processorManifest, Duration.ofMillis(1), maxEvents);
     }
 
     public DefaultAsyncMessageProcessor(final ExecutorService executorService,
-                                        final ScheduledExecutorService scheduledExecutorService,
+                                        final Executor mainExecutor,
                                         final ConcurrentMap<String, EventQueueMap<V>> eventQueueMapMap,
                                         final ConcurrentMap<String, K> eventQueueKeyMap,
                                         final MessageEventHandler<K, V> eventHandler,
@@ -78,7 +76,7 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
                                         Duration processingLoopInterval,
                                         int maxEvents) {
         this.executorService = executorService;
-        this.scheduledExecutorService = scheduledExecutorService;
+        this.mainExecutor = mainExecutor;
         this.eventQueueMapMap = eventQueueMapMap;
         this.eventQueueKeyMap = eventQueueKeyMap;
         this.eventHandler = eventHandler;
@@ -86,6 +84,7 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
         this.processingLoopInterval = processingLoopInterval;
         this.maxEvents = maxEvents;
         this.count = new LongAdder();
+        this.active = false;
     }
 
     @Override
@@ -106,27 +105,28 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
     @Override
     public void addEventToQueue(K key, V event) {
 
-        fullLock.lock();
+        lock.lock();
         try {
             while (maxEvents > 0 && getEventCount() >= maxEvents) {
                 try {
-                    fullCondition.await(5, MILLISECONDS);
+                    fullCondition.await();
                 } catch (InterruptedException e) {
                     log.error("Thread interrupted while adding event {} for key {}", event, key);
                 }
             }
             getProcessorManifest().ifPresent(m -> m.putEvent(key, event));
             getEventQueueMap(key).putEvent(event);
+            emptyCondition.signal();
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            fullLock.unlock();
+            lock.unlock();
         }
     }
 
     @Override
     public boolean isActive() {
-        return Optional.ofNullable(scheduledFuture).map(this::isActive).orElse(false);
+        return active;
     }
 
     @Override
@@ -152,40 +152,66 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
 
     @Override
     public void start() throws Exception {
-        if (!isActive()) {
-            scheduledFuture = scheduledExecutorService.scheduleAtFixedRate(() -> eventQueueMapMap.entrySet()
-                    .forEach(e -> e.getValue()
-                            .iterateKeys(k -> executorService.execute(() -> {
-                                        if (e.getValue().tryQueueLock(k)) {
-                                            try {
-                                                while (!e.getValue().queueIsEmpty(k)) {
-                                                    V event = e.getValue().peekQueue(k);
-                                                    try {
-                                                        eventHandler.handleEvent(eventQueueKeyMap.get(e.getKey()), event);
-                                                        if (!e.getValue().popQueue(k)) {
-                                                            log.warn("EventQueue removed while event was being processed." +
-                                                                    "Key={}, EventQueueMap={}, Event={}", k, e.getValue(), event);
+        if (!active) {
+            active = true;
+            mainExecutor.execute(() -> {
+
+                while (active) {
+
+                    lock.lock();
+                    try {
+                        while (active && getEventCount() == 0) {
+                            emptyCondition.await();
+                        }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        lock.unlock();
+                    }
+
+                    if (active) {
+                        eventQueueMapMap.entrySet()
+                                .forEach(e -> e.getValue()
+                                        .iterateKeys(k -> executorService.execute(() -> {
+                                                    if (e.getValue().tryQueueLock(k)) {
+                                                        try {
+                                                            while (!e.getValue().queueIsEmpty(k)) {
+                                                                V event = e.getValue().peekQueue(k);
+                                                                try {
+                                                                    eventHandler.handleEvent(eventQueueKeyMap.get(e.getKey()), event);
+                                                                    lock.lock();
+                                                                    try {
+                                                                        if (!e.getValue().popQueue(k)) {
+                                                                            log.warn("EventQueue removed while event was being processed." +
+                                                                                    "Key={}, EventQueueMap={}, Event={}", k, e.getValue(), event);
+                                                                        }
+                                                                        fullCondition.signal();
+                                                                    } finally {
+                                                                        lock.unlock();
+                                                                    }
+                                                                    getProcessorManifest().ifPresent(m -> m.removeEvent(eventQueueKeyMap.get(e.getKey()), event));
+                                                                } catch (Exception ex) {
+                                                                    eventHandler.handleException(eventQueueKeyMap.get(e.getKey()), event, new MessageProcessorException(ex));
+                                                                }
+                                                            }
+                                                            e.getValue().removeEmptyQueue(k);
+                                                        } finally {
+                                                            e.getValue().releaseQueueLock(k);
                                                         }
-                                                        getProcessorManifest().ifPresent(m -> m.removeEvent(eventQueueKeyMap.get(e.getKey()), event));
-                                                    } catch (Exception ex) {
-                                                        eventHandler.handleException(eventQueueKeyMap.get(e.getKey()), event, new MessageProcessorException(ex));
                                                     }
-                                                }
-                                                e.getValue().removeEmptyQueue(k);
-                                            } finally {
-                                                e.getValue().releaseQueueLock(k);
-                                            }
-                                        }
-                                    })
-                            )
-                    ), 0, processingLoopInterval.toMillis(), MILLISECONDS);
+                                                })
+                                        )
+                                );
+                    }
+                }
+            });
         }
     }
 
     @Override
     public void stop() throws Exception {
-        if (isActive()) {
-            scheduledFuture.cancel(true);
+        if (active) {
+            active = false;
         }
     }
 
@@ -200,8 +226,5 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
                 q -> new DefaultEventQueueMap<>(count));
     }
 
-    private boolean isActive(ScheduledFuture<?> scheduledFuture) {
-        return !(scheduledFuture.isCancelled() || scheduledFuture.isDone());
-    }
 
 }

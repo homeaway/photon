@@ -103,7 +103,7 @@ public class DefaultAsyncMessageProcessorTest {
 
         do {
             try {
-                Thread.sleep(100);
+                Thread.sleep(200);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -183,7 +183,7 @@ public class DefaultAsyncMessageProcessorTest {
             }
         });
         try {
-            Thread.sleep(500);
+            Thread.sleep(200);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
