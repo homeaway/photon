@@ -26,7 +26,7 @@ EOM
 echo "Maven security settings setup"
 
 echo "Setting up env for deployment"
-openssl aes-256-cbc -K $encrypted_95be9191f256_key -iv $encrypted_95be9191f256_iv -in .travis/codesigning.asc.enc -out .travis/codesigning.asc -d
+openssl aes-256-cbc -K $encrypted_28de043387ef_key -iv $encrypted_28de043387ef_iv -in .travis/codesigning.asc.enc -out .travis/codesigning.asc -d
 if [ $? -ne 0 ] ; then
 	echo "Unable to process gpg keys cannot sign"
 	exit 1
