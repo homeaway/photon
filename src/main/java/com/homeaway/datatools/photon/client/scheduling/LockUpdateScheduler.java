@@ -56,7 +56,7 @@ public class LockUpdateScheduler extends AbstractPhotonScheduler {
                         if (br.getConsumerGroupLock().tryLock()) {
                             if (br.getPhotonBeamReader().getPhotonBeamReaderLock().isPresent()) {
                                 if (br.getPhotonBeamReader().getPhotonBeamReaderLock().get().getLockTime()
-                                        .isBefore(Instant.now().minusMillis(lockThreshold.toMillis()))) {
+                                        .isBefore(Instant.now().minus(lockThreshold))) {
                                     br.getPhotonBeamReader().setPhotonBeamReaderLock(null);
                                 } else {
                                     br.getPhotonBeamReader().getPhotonBeamReaderLock().get().setLockTime(Instant.now());
