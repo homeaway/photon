@@ -68,6 +68,7 @@ public interface PhotonConsumer extends BasePhotonConsumer {
      * @param clientName - The name assigned to the reader by the end-user app.
      * @param beamName - The name of the beam to be read from.
      * @param photonMessageHandler - The implementation of the PhotonMessageHandler interface for callbacks upon receipt of a message.
+     * @param offsetType - The type of offset to use into the beam.
      */
     void putBeamForAsyncProcessing(String clientName, String beamName, PhotonMessageHandler photonMessageHandler, PhotonBeamReaderOffsetType offsetType);
 

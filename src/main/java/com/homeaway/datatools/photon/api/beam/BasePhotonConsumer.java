@@ -21,6 +21,7 @@ public interface BasePhotonConsumer extends Startable {
      * Method to remove a particular beam for a specific reader from the scheduler.
      *
      * @param clientName - The name assigned to the reader by the end-user app.
+     * @param beamName - The name of the beam to stop processing.
      */
     void removeBeamFromProcessing(String clientName, String beamName);
 

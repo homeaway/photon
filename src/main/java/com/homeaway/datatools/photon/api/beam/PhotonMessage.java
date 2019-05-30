@@ -54,6 +54,7 @@ public interface PhotonMessage {
     /**
      * The payload object of the message.
      *
+     * @param clazz - The class to deserialize the payload into.
      * @param <T> - The type of the object that is persisted in the payload (inferred from the client).
      * @return - Object of type T that is used as the payload.
      */

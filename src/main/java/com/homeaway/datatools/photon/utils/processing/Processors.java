@@ -26,6 +26,7 @@ public class Processors {
      * @param processorManifest - The manifest.
      * @param <K> - The data type of the Key
      * @param <V> - The data type of the events.
+     * @param <T> - The type of the values that will be used for ordering the manifest.
      * @return - A new AsyncMessageProcessor with a processor manifest.
      */
     public static <K extends ProcessorKey, V extends ProcessingEvent<T>, T extends Comparable> AsyncMessageProcessor<K, V, T> newAsyncMessageProcessor(MessageEventHandler<K, V> messageEventHandler,
@@ -38,6 +39,7 @@ public class Processors {
      * @param messageEventHandler - The handler that will be called back to for each event.
      * @param <K> - The data type of the Key
      * @param <V> - The data type of the events.
+     * @param <T> - The type of the values that will be used for ordering the manifest.
      * @return - A new AsyncMessageProcessor without a processor manifest.
      */
     public static <K extends ProcessorKey, V extends ProcessingEvent<T>, T extends Comparable> AsyncMessageProcessor<K, V, T> newAsyncMessageProcessor(MessageEventHandler<K, V> messageEventHandler) {

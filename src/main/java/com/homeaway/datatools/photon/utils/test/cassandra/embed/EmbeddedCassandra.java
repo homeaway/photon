@@ -41,7 +41,7 @@ public class EmbeddedCassandra {
 
     private static Status status = Status.INITIAL;
 
-    /** Starts a Cassandra server inside the current JVM and returns a client session. */
+    /* Starts a Cassandra server inside the current JVM and returns a client session. */
     public static Cluster startAndConnect() {
         start();
         return connect();
@@ -90,14 +90,14 @@ public class EmbeddedCassandra {
         status = Status.STARTED;
     }
 
-    /** Sets a system property but only if it has not been set already. */
+    /* Sets a system property but only if it has not been set already. */
     private static void setSystemProperty(String key, String value) {
         if (System.getProperty(key) == null) {
             System.setProperty(key, value);
         }
     }
 
-    /**
+    /*
      * Connects to the local in-memory Cassandra server.  The caller must call {@link Cluster#close()} to avoid
      * leaking resources.
      */
@@ -113,7 +113,7 @@ public class EmbeddedCassandra {
                 .build();
     }
 
-    /** Returns the host and port on which the local in-memory Cassandra server is listing for CQL traffic. */
+    /* Returns the host and port on which the local in-memory Cassandra server is listing for CQL traffic. */
     public static HostAndPort getNativeHostAndPort() {
         checkState(getStatus() == Status.STARTED, "Embedded Cassandra has not been started");
         String host = FBUtilities.getBroadcastAddress().getHostAddress();
