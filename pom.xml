@@ -9,7 +9,7 @@
 	<description>Photon - An Event Sourcing Framework</description>
 
 	<packaging>jar</packaging>
-	<version>0.1.1-SNAPSHOT</version>
+	<version>0.1.1</version>
 
 	<licenses>
 		<license>
