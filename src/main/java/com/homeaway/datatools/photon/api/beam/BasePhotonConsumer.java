@@ -18,11 +18,11 @@ package com.homeaway.datatools.photon.api.beam;
 public interface BasePhotonConsumer extends Startable {
 
     /**
-     * Method to remove a particular reader from the scheduler.
+     * Method to remove a particular beam for a specific reader from the scheduler.
      *
      * @param clientName - The name assigned to the reader by the end-user app.
      */
-    void removeBeamFromProcessing(String clientName);
+    void removeBeamFromProcessing(String clientName, String beamName);
 
     /**
      * Method to configure the polling interval for the scheduler.

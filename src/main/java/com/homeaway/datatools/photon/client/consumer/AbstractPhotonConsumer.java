@@ -180,8 +180,8 @@ abstract class AbstractPhotonConsumer implements PhotonConsumer {
     }
 
     @Override
-    public void removeBeamFromProcessing(String clientName) {
-        beamReaderConfigManager.removeBeamReaderConfig(clientName);
+    public void removeBeamFromProcessing(String clientName, String beamName) {
+        beamReaderConfigManager.removeBeamReaderConfig(clientName, beamName);
     }
 
 

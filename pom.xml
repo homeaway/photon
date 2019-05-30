@@ -9,7 +9,7 @@
 	<description>Photon - An Event Sourcing Framework</description>
 
 	<packaging>jar</packaging>
-	<version>0.1.0</version>
+	<version>0.1.1-SNAPSHOT</version>
 
 	<licenses>
 		<license>
@@ -33,17 +33,6 @@
 			<organizationUrl>https://www.homeaway.com</organizationUrl>
 		</developer>
 	</developers>
-
-	<distributionManagement>
-		<snapshotRepository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-		</snapshotRepository>
-		<repository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-		</repository>
-	</distributionManagement>
 
 	<properties>
 		<release.pluginVersion>2.5.2</release.pluginVersion>
@@ -70,6 +59,9 @@
 		<java.version>11</java.version>
 		<java.source.version>1.8</java.source.version>
 		<java.target.version>1.8</java.target.version>
+
+		<!-- OSSRH -->
+		<nexusStaging.pluginVersion>1.6.8</nexusStaging.pluginVersion>
 	</properties>
 
 	<dependencyManagement>
@@ -252,6 +244,8 @@
 					<autoVersionSubmodules>true</autoVersionSubmodules>
 					<useReleaseProfile>false</useReleaseProfile>
 					<releaseProfiles>signed</releaseProfiles>
+					<!-- to ensure we only deploy during release:perform -->
+					<goals>deploy</goals>
 					<!-- to ensure that tags are of the right format -->
 					<tagNameFormat>v@{project.version}</tagNameFormat>
 				</configuration>
@@ -354,4 +348,55 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<!-- We create a profile here for two things: -->
+			<!-- 1. centrally specify the deploy to ossrh -->
+			<!-- 2. Sign all relevant artifacts (via configured GPG keys) -->
+			<!-- TODO: Automate Release Process #106 -->
+			<id>signed</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.sonatype.plugins</groupId>
+						<artifactId>nexus-staging-maven-plugin</artifactId>
+						<version>${nexusStaging.pluginVersion}</version>
+						<extensions>true</extensions>
+						<configuration>
+							<serverId>ossrh</serverId>
+							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+							<autoReleaseAfterClose>true</autoReleaseAfterClose>
+						</configuration>
+					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.6</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+	</distributionManagement>
 </project>

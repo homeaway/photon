@@ -83,8 +83,8 @@ public class DefaultAsyncPhotonConsumer<T> implements AsyncPhotonConsumer<T> {
     }
 
     @Override
-    public void removeBeamFromProcessing(String clientName) {
-        photonConsumer.removeBeamFromProcessing(clientName);
+    public void removeBeamFromProcessing(String clientName, String beamName) {
+        photonConsumer.removeBeamFromProcessing(clientName, beamName);
     }
 
     @Override

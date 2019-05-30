@@ -58,8 +58,8 @@ public class DefaultBeamReaderConfigManager implements BeamReaderConfigManager {
     }
 
     @Override
-    public ConcurrentMap<String, PhotonBeamReaderConfig> removeBeamReaderConfig(String clientName) {
-        return beamConfigs.remove(clientName);
+    public PhotonBeamReaderConfig removeBeamReaderConfig(String clientName, String beamName) {
+        return beamConfigs.get(clientName).remove(beamName);
     }
 
     @Override

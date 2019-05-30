@@ -18,14 +18,13 @@ package com.homeaway.datatools.photon.utils.client.consumer;
 import com.homeaway.datatools.photon.client.consumer.PhotonBeamReaderConfig;
 
 import java.util.Optional;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 
 public interface BeamReaderConfigManager {
 
     void putBeamReaderConfig(PhotonBeamReaderConfig photonBeamReaderConfig);
 
-    ConcurrentMap<String, PhotonBeamReaderConfig> removeBeamReaderConfig(String clientName);
+    PhotonBeamReaderConfig removeBeamReaderConfig(String clientName, String beamName);
 
     Optional<PhotonBeamReaderConfig> getBeamReaderConfig(String clientName, String beamName);
 
