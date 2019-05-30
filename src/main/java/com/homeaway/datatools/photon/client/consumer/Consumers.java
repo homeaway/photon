@@ -90,7 +90,7 @@ public class Consumers {
                         }
                     }).orElse(new LocalSchemaClient());
 
-            properties.put(BEAM_SCHEMA_DAO, driver.getBeamDataDao());
+            properties.put(BEAM_SCHEMA_DAO, driver.getBeamSchemaDao());
 
             schemaClient.configure(properties);
 

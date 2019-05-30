@@ -25,6 +25,7 @@ import com.homeaway.datatools.photon.client.consumer.partition.consumer.WalkBack
 import com.homeaway.datatools.photon.client.scheduling.PhotonScheduler;
 import com.homeaway.datatools.photon.dao.beam.BeamReaderDao;
 import com.homeaway.datatools.photon.api.model.enums.PhotonBeamReaderOffsetType;
+import com.homeaway.datatools.photon.dao.model.beam.PhotonBeam;
 import static com.homeaway.datatools.photon.utils.client.ConsumerUtils.GET_BEAM_WITH_EARLIEST_START;
 import com.homeaway.datatools.photon.utils.client.consumer.BeamReaderConfigManager;
 import com.homeaway.datatools.photon.utils.client.consumer.BeamReaderLockManager;
@@ -182,6 +183,15 @@ abstract class AbstractPhotonConsumer implements PhotonConsumer {
     @Override
     public void removeBeamFromProcessing(String clientName, String beamName) {
         beamReaderConfigManager.removeBeamReaderConfig(clientName, beamName);
+        for(PhotonBeam b : beamCache.getBeamByName(beamName)) {
+            beamReaderCache.getPhotonBeamReader(clientName, b)
+                .ifPresent(br -> {
+                    if (br.getLock().isLocked()) {
+                        beamConsumer.stopConsumers(br.getPhotonBeamReader().getBeamReaderUuid());
+                    }
+                    beamReaderCache.ejectPhotonBeamReader(clientName, b);
+                });
+        }
     }
 
 

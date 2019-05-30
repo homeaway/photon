@@ -44,7 +44,7 @@
 		<cassandra.version>3.11.2</cassandra.version>
 		<cassandra.driver.version>3.3.0</cassandra.driver.version>
 		<coverage.line>0.80</coverage.line>
-		<coverage.branch>0.45</coverage.branch>
+		<coverage.branch>0.40</coverage.branch>
 		<coverage.class>0</coverage.class>
 		<coverage.method>0</coverage.method>
 		<coverage.jacoco.pluginVersion>0.8.3</coverage.jacoco.pluginVersion>
