@@ -105,7 +105,7 @@ public class EmbeddedCassandra {
         HostAndPort hostAndPort = getNativeHostAndPort();
         log.debug("Connecting to local Cassandra server at {}...", hostAndPort);
         return Cluster.builder()
-                .addContactPoint(hostAndPort.getHostText())
+                .addContactPoint(hostAndPort.getHost())
                 .withPort(hostAndPort.getPort())
                 .withTimestampGenerator(new AtomicMonotonicTimestampGenerator())
                 .withoutMetrics()
