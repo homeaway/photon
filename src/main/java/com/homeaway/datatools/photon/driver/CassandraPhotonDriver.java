@@ -46,7 +46,6 @@ import static com.homeaway.datatools.photon.utils.client.ClientConstants.BEAM_RE
 import static com.homeaway.datatools.photon.utils.client.ClientConstants.PARTITION_SIZE_MILLISECONDS;
 import com.homeaway.datatools.photon.utils.dao.DefaultPartitionHelper;
 import com.homeaway.datatools.photon.utils.dao.PartitionHelper;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Optional;
@@ -54,7 +53,6 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-@Data
 public class CassandraPhotonDriver implements PhotonDriver {
 
     public static String CLIENT_SSL_OPTIONS = "client.ssl.options";
@@ -68,42 +66,124 @@ public class CassandraPhotonDriver implements PhotonDriver {
     public static String MULTI_REGION_SESSION_CONTACT_POINTS = "multi.region.session.contact.points";
     public static String MULTI_REGION_SESSION_KEYSPACE = "multi.region.photon.keyspace";
 
-    private final BeamDao beamDao;
-    private final BeamDataDao beamDataDao;
-    private final BeamDataManifestDao beamDataManifestDao;
-    private final BeamProcessedDao beamProcessedDao;
-    private final BeamReaderDao beamReaderDao;
-    private final BeamReaderLockDao beamReaderLockDao;
-    private final BeamSchemaDao beamSchemaDao;
+    private final Properties properties;
     private final PartitionHelper partitionHelper;
+    private Cluster cluster;
+    private Session session;
+    private Session multiRegionSession;
+    private BeamDao beamDao;
+    private BeamDataDao beamDataDao;
+    private BeamDataManifestDao beamDataManifestDao;
+    private BeamProcessedDao beamProcessedDao;
+    private BeamReaderDao beamReaderDao;
+    private BeamReaderLockDao beamReaderLockDao;
+    private BeamSchemaDao beamSchemaDao;
+
 
     public CassandraPhotonDriver(final Properties properties) {
-
-        Session session = getSession(properties.getProperty(SESSION_CONTACT_POINTS).split(","), properties.getProperty(SESSION_USER_NAME),
-                properties.getProperty(SESSION_PASSWORD), properties.getProperty(SESSION_KEYSPACE),
-                (SSLOptions) properties.get(CLIENT_SSL_OPTIONS));
-
-        Session multiRegionSession = Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_KEYSPACE))
-                .map(k -> getSession(Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_CONTACT_POINTS))
-                    .orElse(properties.getProperty(SESSION_CONTACT_POINTS)).split(","),
-                        Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_USER_NAME)).orElse(properties.getProperty(SESSION_USER_NAME)),
-                        Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_PASSWORD)).orElse(properties.getProperty(SESSION_PASSWORD)),
-                        Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_KEYSPACE)).orElse(properties.getProperty(SESSION_KEYSPACE)),
-                        (SSLOptions) properties.get(CLIENT_SSL_OPTIONS)
-                )).orElse(session);
-
+        this.properties = properties;
         this.partitionHelper = new DefaultPartitionHelper(Optional.ofNullable(properties.getProperty(PARTITION_SIZE_MILLIS))
                 .map(Integer::parseInt).orElse(PARTITION_SIZE_MILLISECONDS));
-        this.beamDao = new CassandraBeamDao(session);
-        this.beamDataManifestDao = new CassandraBeamDataManifestDao(session, partitionHelper);
-        this.beamDataDao = new CassandraBeamDataDao(session, partitionHelper, beamDataManifestDao);
-        this.beamSchemaDao = new CassandraBeamSchemaDao(session);
-        this.beamProcessedDao = new CassandraBeamProcessedDao(multiRegionSession, partitionHelper);
-        this.beamReaderDao = new CassandraBeamReaderDao(multiRegionSession);
-        this.beamReaderLockDao = new CassandraBeamReaderLockDao(multiRegionSession, BEAM_READ_LOCK_THRESHOLD);
     }
 
-    private Session getSession(String[] contactPoints, String userName, String password, String keySpace, SSLOptions sslOptions) {
+    @Override
+    public void shutDown() {
+        Optional.ofNullable(session)
+                .filter(s -> !s.isClosed())
+                .ifPresent(Session::close);
+        Optional.ofNullable(multiRegionSession)
+                .filter(s -> !s.isClosed())
+                .ifPresent(Session::close);
+        Optional.ofNullable(cluster)
+                .filter(c -> !c.isClosed())
+                .ifPresent(Cluster::close);
+        beamDao = null;
+        beamDataDao = null;
+        beamDataManifestDao = null;
+        beamProcessedDao = null;
+        beamReaderDao = null;
+        beamReaderLockDao = null;
+        beamSchemaDao = null;
+    }
+
+    @Override
+    public BeamDao getBeamDao() {
+        return Optional.ofNullable(beamDao)
+                .orElseGet(() -> {
+                    beamDao = new CassandraBeamDao(getSession(properties));
+                    return beamDao;
+                });
+    }
+
+    @Override
+    public BeamDataDao getBeamDataDao() {
+        return Optional.ofNullable(beamDataDao)
+                .orElseGet(() -> {
+                    beamDataDao = new CassandraBeamDataDao(getSession(properties), partitionHelper, beamDataManifestDao);
+                    return beamDataDao;
+                });
+    }
+
+    @Override
+    public BeamDataManifestDao getBeamDataManifestDao() {
+        return Optional.ofNullable(beamDataManifestDao)
+                .orElseGet(() -> {
+                    beamDataManifestDao = new CassandraBeamDataManifestDao(getSession(properties), partitionHelper);
+                    return beamDataManifestDao;
+                });
+    }
+
+    @Override
+    public BeamProcessedDao getBeamProcessedDao() {
+        return Optional.ofNullable(beamProcessedDao)
+                .orElseGet(() -> {
+                    beamProcessedDao = new CassandraBeamProcessedDao(getMultiRegionSession(properties), partitionHelper);
+                    return beamProcessedDao;
+                });
+    }
+
+    @Override
+    public BeamReaderDao getBeamReaderDao() {
+        return Optional.ofNullable(beamReaderDao)
+                .orElseGet(() -> {
+                    beamReaderDao = new CassandraBeamReaderDao(getMultiRegionSession(properties));
+                    return beamReaderDao;
+                });
+    }
+
+    @Override
+    public BeamReaderLockDao getBeamReaderLockDao() {
+        return Optional.ofNullable(beamReaderLockDao)
+                .orElseGet(() -> {
+                    beamReaderLockDao = new CassandraBeamReaderLockDao(getMultiRegionSession(properties), BEAM_READ_LOCK_THRESHOLD);
+                    return beamReaderLockDao;
+                });
+    }
+
+    @Override
+    public BeamSchemaDao getBeamSchemaDao() {
+        return Optional.ofNullable(beamSchemaDao)
+                .orElseGet(() -> {
+                    beamSchemaDao = new CassandraBeamSchemaDao(getSession(properties));
+                    return beamSchemaDao;
+                });
+    }
+
+    @Override
+    public PartitionHelper getPartitionHelper() {
+        return partitionHelper;
+    }
+
+    private Cluster getCluster(String[] contactPoints, String userName, String password, SSLOptions sslOptions) {
+        return Optional.ofNullable(cluster)
+                .filter(c -> !c.isClosed())
+                .orElseGet(() -> {
+                    cluster = buildCluster(contactPoints, userName, password, sslOptions);
+                    return cluster;
+                });
+    }
+
+    private Cluster buildCluster(String[] contactPoints, String userName, String password, SSLOptions sslOptions) {
         Cluster.Builder builder = new Cluster.Builder()
                 .addContactPoints(contactPoints)
                 .withAuthProvider(new PlainTextAuthProvider(userName, password))
@@ -116,7 +196,7 @@ public class CassandraPhotonDriver implements PhotonDriver {
         }
 
         try {
-            return  builder.build().connect(keySpace);
+            return  builder.build();
         } catch (NoHostAvailableException e) {
             log.warn("Failed to connect to the cassandra DB with SSL enabled, trying again without SSL: {}", e.getMessage());
             return new Cluster.Builder()
@@ -125,10 +205,39 @@ public class CassandraPhotonDriver implements PhotonDriver {
                     .withLoadBalancingPolicy(getLoadBalancingPolicy())
                     .withPoolingOptions(getPoolingOptions())
                     .withoutJMXReporting()
-                    .build()
-                    .connect(keySpace);
+                    .build();
         }
+    }
 
+    private Session buildSession(String[] contactPoints, String userName, String password, String keySpace, SSLOptions sslOptions) {
+        return getCluster(contactPoints, userName, password, sslOptions).connect(keySpace);
+    }
+
+    private Session getSession(final Properties properties) {
+        return Optional.ofNullable(session)
+                .filter(s -> !s.isClosed())
+                .orElseGet(() -> {
+                    session = buildSession(properties.getProperty(SESSION_CONTACT_POINTS).split(","), properties.getProperty(SESSION_USER_NAME),
+                            properties.getProperty(SESSION_PASSWORD), properties.getProperty(SESSION_KEYSPACE),
+                            (SSLOptions) properties.get(CLIENT_SSL_OPTIONS));
+            return session;
+        });
+    }
+
+    private Session getMultiRegionSession(final Properties properties) {
+        return Optional.ofNullable(multiRegionSession)
+                .filter(s -> !s.isClosed())
+                .orElseGet(() -> {
+                    multiRegionSession = Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_KEYSPACE))
+                            .map(k -> buildSession(Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_CONTACT_POINTS))
+                                            .orElse(properties.getProperty(SESSION_CONTACT_POINTS)).split(","),
+                                    Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_USER_NAME)).orElse(properties.getProperty(SESSION_USER_NAME)),
+                                    Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_PASSWORD)).orElse(properties.getProperty(SESSION_PASSWORD)),
+                                    Optional.ofNullable(properties.getProperty(MULTI_REGION_SESSION_KEYSPACE)).orElse(properties.getProperty(SESSION_KEYSPACE)),
+                                    (SSLOptions) properties.get(CLIENT_SSL_OPTIONS)
+                            )).orElse(getSession(properties));
+                    return multiRegionSession;
+                });
     }
 
     private static LoadBalancingPolicy getLoadBalancingPolicy() {
@@ -154,4 +263,6 @@ public class CassandraPhotonDriver implements PhotonDriver {
         poolingOptions.setMaxRequestsPerConnection(REMOTE, 30000);
         return poolingOptions;
     }
+
+
 }

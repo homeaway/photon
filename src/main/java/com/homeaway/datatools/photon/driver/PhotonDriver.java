@@ -34,5 +34,5 @@ public interface PhotonDriver {
     BeamReaderLockDao getBeamReaderLockDao();
     BeamSchemaDao getBeamSchemaDao();
     PartitionHelper getPartitionHelper();
-
+    void shutDown();
 }

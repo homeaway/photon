@@ -55,28 +55,40 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 
 public class Consumers {
 
-    private static PhotonDriver driver;
-    private static final ConcurrentMap<ConsumerType, ConsumerFactory> factories = Maps.newConcurrentMap();
-    private static BeamReaderLockManager beamReaderLockManager;
-    private static BeamReaderConfigManager beamReaderConfigManager;
-    private static PhotonScheduler beamReaderScheduler;
-    private static BeamCache beamCache;
-    private static BeamReaderCache beamReaderCache;
-    private static BeamReaderDao beamReaderDao;
-    private static BeamConsumer beamConsumer;
-    private static WalkBackBeamConsumer walkBackBeamConsumer;
-    private static Duration walkbackThreshold;
+    private final PhotonDriver driver;
+    private final ConcurrentMap<ConsumerType, ConsumerFactory> factories = Maps.newConcurrentMap();
+    private BeamReaderLockManager beamReaderLockManager;
+    private BeamReaderConfigManager beamReaderConfigManager;
+    private PhotonScheduler beamReaderScheduler;
+    private BeamCache beamCache;
+    private BeamReaderCache beamReaderCache;
+    private BeamReaderDao beamReaderDao;
+    private BeamConsumer beamConsumer;
+    private ProcessedRecordCache processedRecordCache;
+    private WalkBackBeamConsumer walkBackBeamConsumer;
+    private Duration walkbackThreshold;
 
-    public static ConsumerFactory newConsumerFactory(final Properties properties) {
+    private static Consumers instance;
 
+
+    private Consumers(final Properties properties) {
+        this.driver = getPhotonDriver(properties);
+    }
+
+    private static Consumers getInstance(final Properties properties) {
+        return Optional.ofNullable(instance)
+                .orElseGet(() -> {
+                    instance = new Consumers(properties);
+                    return instance;
+                });
+    }
+
+    private ConsumerFactory getFactory(Properties properties) {
         try {
-            PhotonDriver driver = getPhotonDriver(properties);
-
             PhotonDeserializer photonDeserializer = (PhotonDeserializer) Class.forName(properties.getProperty(PHOTON_DESERIALIZER_CLASS))
                     .getConstructor()
                     .newInstance();
@@ -84,7 +96,7 @@ public class Consumers {
             SchemaClient schemaClient = Optional.ofNullable(properties.getProperty(PHOTON_SCHEMA_CLIENT_CLASS))
                     .map(c -> {
                         try {
-                            return (SchemaClient)Class.forName(c).getConstructor().newInstance();
+                            return (SchemaClient) Class.forName(c).getConstructor().newInstance();
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -98,7 +110,7 @@ public class Consumers {
             deserializerConfig.put(AVRO_SCHEMA_CLIENT, schemaClient);
             photonDeserializer.configure(deserializerConfig);
 
-            ProcessedRecordCache processedRecordCache = new DefaultProcessedRecordCache(driver.getBeamProcessedDao());
+            processedRecordCache = new DefaultProcessedRecordCache(driver.getBeamProcessedDao());
             walkbackThreshold = Optional.ofNullable(properties.getProperty(WALKBACK_THRESHOLD_MINUTES))
                     .map(t -> Duration.ofMinutes(Integer.parseInt(t))).orElse(DEFAULT_WALKBACK_THRESHOLD);
             beamReaderDao = driver.getBeamReaderDao();
@@ -122,50 +134,75 @@ public class Consumers {
                     .map(ct -> ConsumerType.valueOf(ct.toUpperCase()))
                     .orElse(SINGLE_REGION);
 
-            return factories.computeIfAbsent(consumerType, k -> new DefaultConsumerFactory(k.buildConsumer(), beamCache, beamReaderCache,
-                    beamReaderDao, processedRecordCache));
+            return new DefaultConsumerFactory(consumerType.buildConsumer(beamReaderConfigManager,
+                    beamReaderScheduler, beamReaderLockManager, beamCache, beamReaderCache, beamReaderDao,
+                    beamConsumer, walkBackBeamConsumer, walkbackThreshold), beamCache, beamReaderCache,
+                    beamReaderDao, processedRecordCache);
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
+    public static ConsumerFactory newConsumerFactory(final Properties properties) {
+        return getInstance(properties).getFactory(properties);
+    }
+
+    public static void shutDown() {
+        instance.driver.shutDown();
+    }
+
     enum ConsumerType {
 
-        SINGLE_REGION(() -> new DefaultPhotonConsumer(beamReaderConfigManager, beamReaderScheduler,
-                beamReaderLockManager, beamCache, beamReaderCache, beamReaderDao, beamConsumer)),
-        MULTI_REGION(() -> new DefaultPhotonMultiRegionConsumer(beamReaderConfigManager, beamReaderScheduler,
+        SINGLE_REGION((beamReaderConfigManager, beamReaderScheduler, beamReaderLockManager, beamCache,
+                       beamReaderCache, beamReaderDao, beamConsumer, walkBackBeamConsumer, walkBackThreshold) ->
+                new DefaultPhotonConsumer(beamReaderConfigManager, beamReaderScheduler, beamReaderLockManager,
+                        beamCache, beamReaderCache, beamReaderDao, beamConsumer)),
+        MULTI_REGION((beamReaderConfigManager, beamReaderScheduler, beamReaderLockManager, beamCache,
+                      beamReaderCache, beamReaderDao, beamConsumer, walkBackBeamConsumer, walkBackThreshold) ->
+                new DefaultPhotonMultiRegionConsumer(beamReaderConfigManager, beamReaderScheduler,
                 beamReaderLockManager, beamCache, beamReaderCache, beamReaderDao, beamConsumer, walkBackBeamConsumer,
-                Optional.ofNullable(walkbackThreshold).orElse(DEFAULT_WALKBACK_THRESHOLD)));
+                Optional.ofNullable(walkBackThreshold).orElse(DEFAULT_WALKBACK_THRESHOLD)));
 
-        private final Callable<PhotonConsumer> photonConsumerBuilder;
+        private final ConsumerFunction photonConsumerBuilder;
 
-        ConsumerType(final Callable<PhotonConsumer> photonConsumerBuilder) {
+        ConsumerType(final ConsumerFunction photonConsumerBuilder) {
             this.photonConsumerBuilder = photonConsumerBuilder;
         }
 
-        PhotonConsumer buildConsumer() {
+        PhotonConsumer buildConsumer(BeamReaderConfigManager beamReaderConfigManager,
+                                     PhotonScheduler beamReaderScheduler,
+                                     BeamReaderLockManager beamReaderLockManager,
+                                     BeamCache beamCache,
+                                     BeamReaderCache beamReaderCache,
+                                     BeamReaderDao beamReaderDao,
+                                     BeamConsumer beamConsumer,
+                                     WalkBackBeamConsumer walkBackBeamConsumer,
+                                     Duration walkBackThreshold) {
             try {
-                return photonConsumerBuilder.call();
+                return photonConsumerBuilder.build(beamReaderConfigManager, beamReaderScheduler, beamReaderLockManager,
+                        beamCache, beamReaderCache, beamReaderDao, beamConsumer, walkBackBeamConsumer, walkBackThreshold);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    private static PhotonDriver getPhotonDriver(final Properties properties) {
+    private PhotonDriver getPhotonDriver(final Properties properties) {
         try {
-            return Optional.ofNullable(driver).orElseGet(() -> {
-                try {
-                    driver = (PhotonDriver) Class.forName(properties.getProperty(PHOTON_DRIVER_CLASS))
-                            .getConstructor(Properties.class)
-                            .newInstance(properties);
-                    return driver;
-                } catch(Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            return (PhotonDriver) Class.forName(properties.getProperty(PHOTON_DRIVER_CLASS))
+                .getConstructor(Properties.class)
+                .newInstance(properties);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @FunctionalInterface
+    private interface ConsumerFunction {
+        PhotonConsumer build(BeamReaderConfigManager beamReaderConfigManager, PhotonScheduler beamReaderScheduler,
+                             BeamReaderLockManager beamReaderLockManager, BeamCache beamCache, BeamReaderCache beamReaderCache,
+                             BeamReaderDao beamReaderDao, BeamConsumer beamConsumer, WalkBackBeamConsumer walkBackBeamConsumer,
+                             Duration walkBackThreshold);
     }
 }

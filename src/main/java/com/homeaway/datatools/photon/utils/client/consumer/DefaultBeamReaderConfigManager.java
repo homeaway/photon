@@ -59,7 +59,9 @@ public class DefaultBeamReaderConfigManager implements BeamReaderConfigManager {
 
     @Override
     public PhotonBeamReaderConfig removeBeamReaderConfig(String clientName, String beamName) {
-        return beamConfigs.get(clientName).remove(beamName);
+        return Optional.ofNullable(beamConfigs.get(clientName))
+                .map(c -> c.remove(beamName))
+                .orElse(null);
     }
 
     @Override
