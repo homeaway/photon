@@ -68,7 +68,6 @@ public class CassandraPhotonDriver implements PhotonDriver {
 
     private final Properties properties;
     private final PartitionHelper partitionHelper;
-    private Cluster cluster;
     private Session session;
     private Session multiRegionSession;
     private BeamDao beamDao;
@@ -94,9 +93,6 @@ public class CassandraPhotonDriver implements PhotonDriver {
         Optional.ofNullable(multiRegionSession)
                 .filter(s -> !s.isClosed())
                 .ifPresent(Session::close);
-        Optional.ofNullable(cluster)
-                .filter(c -> !c.isClosed())
-                .ifPresent(Cluster::close);
         beamDao = null;
         beamDataDao = null;
         beamDataManifestDao = null;
@@ -174,16 +170,7 @@ public class CassandraPhotonDriver implements PhotonDriver {
         return partitionHelper;
     }
 
-    private Cluster getCluster(String[] contactPoints, String userName, String password, SSLOptions sslOptions) {
-        return Optional.ofNullable(cluster)
-                .filter(c -> !c.isClosed())
-                .orElseGet(() -> {
-                    cluster = buildCluster(contactPoints, userName, password, sslOptions);
-                    return cluster;
-                });
-    }
-
-    private Cluster buildCluster(String[] contactPoints, String userName, String password, SSLOptions sslOptions) {
+    private Session buildSession(String[] contactPoints, String userName, String password, String keySpace, SSLOptions sslOptions) {
         Cluster.Builder builder = new Cluster.Builder()
                 .addContactPoints(contactPoints)
                 .withAuthProvider(new PlainTextAuthProvider(userName, password))
@@ -196,7 +183,7 @@ public class CassandraPhotonDriver implements PhotonDriver {
         }
 
         try {
-            return  builder.build();
+            return  builder.build().connect(keySpace);
         } catch (NoHostAvailableException e) {
             log.warn("Failed to connect to the cassandra DB with SSL enabled, trying again without SSL: {}", e.getMessage());
             return new Cluster.Builder()
@@ -205,12 +192,10 @@ public class CassandraPhotonDriver implements PhotonDriver {
                     .withLoadBalancingPolicy(getLoadBalancingPolicy())
                     .withPoolingOptions(getPoolingOptions())
                     .withoutJMXReporting()
-                    .build();
+                    .build()
+                    .connect(keySpace);
         }
-    }
 
-    private Session buildSession(String[] contactPoints, String userName, String password, String keySpace, SSLOptions sslOptions) {
-        return getCluster(contactPoints, userName, password, sslOptions).connect(keySpace);
     }
 
     private Session getSession(final Properties properties) {
