@@ -55,12 +55,11 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentMap;
 
 public class Consumers {
 
     private final PhotonDriver driver;
-    private final ConcurrentMap<ConsumerType, ConsumerFactory> factories = Maps.newConcurrentMap();
+    private ConsumerFactory consumerFactory;
     private BeamReaderLockManager beamReaderLockManager;
     private BeamReaderConfigManager beamReaderConfigManager;
     private PhotonScheduler beamReaderScheduler;
@@ -88,6 +87,14 @@ public class Consumers {
     }
 
     private ConsumerFactory getFactory(Properties properties) {
+        return Optional.ofNullable(consumerFactory)
+                .orElseGet(() -> {
+                    consumerFactory = buildFactory(properties);
+                    return consumerFactory;
+                });
+    }
+
+    private ConsumerFactory buildFactory(Properties properties) {
         try {
             PhotonDeserializer photonDeserializer = (PhotonDeserializer) Class.forName(properties.getProperty(PHOTON_DESERIALIZER_CLASS))
                     .getConstructor()
@@ -149,7 +156,12 @@ public class Consumers {
     }
 
     public static void shutDown() {
-        instance.driver.shutDown();
+        instance.shutDownFactory();
+    }
+
+    private void shutDownFactory() {
+        driver.shutDown();
+        consumerFactory = null;
     }
 
     enum ConsumerType {
