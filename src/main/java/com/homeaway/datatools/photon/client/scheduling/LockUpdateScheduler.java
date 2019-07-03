@@ -73,4 +73,9 @@ public class LockUpdateScheduler extends AbstractPhotonScheduler {
                     }
                 }));
     }
+
+    @Override
+    void doShutDown() throws Exception {
+        executorService.shutdown();
+    }
 }

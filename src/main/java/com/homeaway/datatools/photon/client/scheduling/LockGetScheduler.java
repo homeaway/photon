@@ -71,4 +71,9 @@ public class LockGetScheduler extends AbstractPhotonScheduler {
                     }
                 }));
     }
+
+    @Override
+    void doShutDown() throws Exception {
+        executorService.shutdown();
+    }
 }

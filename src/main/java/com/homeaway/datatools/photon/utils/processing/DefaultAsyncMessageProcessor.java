@@ -195,6 +195,12 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
     }
 
     @Override
+    public void shutdown() throws Exception {
+        scheduledExecutorService.shutdown();
+        executorService.shutdown();
+    }
+
+    @Override
     public Optional<ProcessorManifest<K, V, T>> getProcessorManifest() {
         return Optional.ofNullable(processorManifest);
     }

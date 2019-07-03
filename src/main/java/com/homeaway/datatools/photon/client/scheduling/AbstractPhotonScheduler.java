@@ -65,7 +65,7 @@ public abstract class AbstractPhotonScheduler implements PhotonScheduler {
                 try {
                     executeTask();
                 } catch (Exception e) {
-                    log.error("Could not schedule task {}", e);
+                    log.error("Could not schedule task", e);
                 }
             }, 0L, pollingInterval.toMillis(), TimeUnit.MILLISECONDS);
         }
@@ -78,9 +78,17 @@ public abstract class AbstractPhotonScheduler implements PhotonScheduler {
         }
     }
 
-    abstract void executeTask();
-
     private boolean isActive(ScheduledFuture<?> scheduledFuture) {
         return !(scheduledFuture.isCancelled() || scheduledFuture.isDone());
     }
+
+    @Override
+    public void shutdown() throws Exception {
+        scheduledExecutorService.shutdown();
+        doShutDown();
+    }
+
+    abstract void executeTask();
+
+    abstract void doShutDown() throws Exception;
 }

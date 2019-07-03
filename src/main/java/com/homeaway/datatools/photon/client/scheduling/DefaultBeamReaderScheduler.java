@@ -97,4 +97,9 @@ public class DefaultBeamReaderScheduler extends AbstractPhotonScheduler {
             }
         });
     }
+
+    @Override
+    void doShutDown() throws Exception {
+        executorService.shutdown();
+    }
 }

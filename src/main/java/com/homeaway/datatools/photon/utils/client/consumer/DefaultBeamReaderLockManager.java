@@ -69,4 +69,10 @@ public class DefaultBeamReaderLockManager implements BeamReaderLockManager {
         lockUpdateScheduler.stop();
         lockGetScheduler.stop();
     }
+
+    @Override
+    public void shutdown() throws Exception {
+        lockUpdateScheduler.shutdown();
+        lockGetScheduler.shutdown();
+    }
 }

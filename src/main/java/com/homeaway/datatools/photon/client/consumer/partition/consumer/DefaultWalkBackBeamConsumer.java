@@ -145,6 +145,12 @@ public class DefaultWalkBackBeamConsumer extends AbstractBeamConsumer implements
         active = false;
     }
 
+    @Override
+    public void shutdown() throws Exception {
+        scheduledExecutorService.shutdown();
+        executorService.shutdown();
+    }
+
     private void consume(PhotonBeamReader photonBeamReader,
                          PhotonBeamWalkBackTracker photonBeamWalkBackTracker) {
 

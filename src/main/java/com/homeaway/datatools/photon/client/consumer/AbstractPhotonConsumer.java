@@ -136,6 +136,20 @@ abstract class AbstractPhotonConsumer implements PhotonConsumer {
     }
 
     @Override
+    public void shutdown() throws Exception {
+        beamReaderScheduler.shutdown();
+        beamReaderLockManager.shutdown();
+        Optional.ofNullable(walkBackBeamConsumer).ifPresent(wc -> {
+            try {
+                wc.shutdown();
+            } catch (Exception e) {
+                log.error("Could not stop walkback consumer", e);
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Override
     public void putBeamForProcessing(String clientName, String beamName, PhotonMessageHandler photonMessageHandler,
                                      PhotonBeamReaderOffsetType offsetType) {
         putBeamForProcessing(clientName, beamName, photonMessageHandler, offsetType, getDefaultWatermarkFunction(offsetType));
@@ -212,5 +226,4 @@ abstract class AbstractPhotonConsumer implements PhotonConsumer {
         }
         return null;
     }
-
 }

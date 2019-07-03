@@ -109,6 +109,12 @@ public class DefaultAsyncPhotonConsumer<T> implements AsyncPhotonConsumer<T> {
         asyncProcessor.stop();
     }
 
+    @Override
+    public void shutdown() throws Exception {
+        photonConsumer.shutdown();
+        asyncProcessor.shutdown();
+    }
+
     @Slf4j
     private static final class AsyncPhotonHandler<T> implements PhotonMessageHandler {
 

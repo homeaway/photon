@@ -4,4 +4,6 @@ public interface Stoppable {
 
     void stop() throws Exception;
 
+    void shutdown() throws Exception;
+
 }
