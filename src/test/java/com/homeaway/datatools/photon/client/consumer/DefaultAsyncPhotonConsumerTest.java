@@ -76,7 +76,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
 
 public class DefaultAsyncPhotonConsumerTest {
 
@@ -111,8 +110,7 @@ public class DefaultAsyncPhotonConsumerTest {
                 processedRecordCache, watermarkUpdater, new BaseOffsetManager(beamReaderDao), partitionHelper);
 
         BeamReaderConfigManager beamReaderConfigManager = new DefaultBeamReaderConfigManager(beamCache, beamReaderCache);
-        BeamReaderLockManager beamReaderLockManager = new DefaultBeamReaderLockManager(Executors.newScheduledThreadPool(10),
-                Executors.newFixedThreadPool(10), beamReaderCache, beamReaderLockDao, Duration.ofMillis(10));
+        BeamReaderLockManager beamReaderLockManager = new DefaultBeamReaderLockManager(beamReaderCache, beamReaderLockDao, Duration.ofMillis(10));
 
         PhotonConsumer photonConsumer = new DefaultPhotonConsumer(beamReaderConfigManager,
                 new DefaultBeamReaderScheduler(beamReaderConfigManager, beamCache, beamReaderCache, beamConsumer, CONSUMER_EXECUTION_FUNCTION),

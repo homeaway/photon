@@ -75,7 +75,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.Executors;
 
 @Slf4j
 public class DefaultPhotonConsumerTest {
@@ -123,8 +122,7 @@ public class DefaultPhotonConsumerTest {
                 processedRecordCache, watermarkUpdater, new BaseOffsetManager(beamReaderDao), partitionHelper);
 
         BeamReaderConfigManager beamReaderConfigManager = new DefaultBeamReaderConfigManager(beamCache, beamReaderCache);
-        BeamReaderLockManager beamReaderLockManager = new DefaultBeamReaderLockManager(Executors.newScheduledThreadPool(10),
-                Executors.newFixedThreadPool(10), beamReaderCache, beamReaderLockDao, BEAM_READ_LOCK_THRESHOLD);
+        BeamReaderLockManager beamReaderLockManager = new DefaultBeamReaderLockManager(beamReaderCache, beamReaderLockDao, BEAM_READ_LOCK_THRESHOLD);
 
         PhotonConsumer photonConsumer = new DefaultPhotonConsumer(beamReaderConfigManager,
                 new DefaultBeamReaderScheduler(beamReaderConfigManager, beamCache, beamReaderCache, beamConsumer, CONSUMER_EXECUTION_FUNCTION),
@@ -182,8 +180,7 @@ public class DefaultPhotonConsumerTest {
                 processedRecordCache, watermarkUpdater, new BaseOffsetManager(beamReaderDao), partitionHelper);
 
         BeamReaderConfigManager beamReaderConfigManager = new DefaultBeamReaderConfigManager(beamCache, beamReaderCache);
-        BeamReaderLockManager beamReaderLockManager = new DefaultBeamReaderLockManager(Executors.newScheduledThreadPool(10),
-                Executors.newFixedThreadPool(10), beamReaderCache, beamReaderLockDao, BEAM_READ_LOCK_THRESHOLD);
+        BeamReaderLockManager beamReaderLockManager = new DefaultBeamReaderLockManager(beamReaderCache, beamReaderLockDao, BEAM_READ_LOCK_THRESHOLD);
 
         PhotonConsumer photonConsumer = new DefaultPhotonConsumer(beamReaderConfigManager,
                 new DefaultBeamReaderScheduler(beamReaderConfigManager, beamCache, beamReaderCache, beamConsumer, CONSUMER_EXECUTION_FUNCTION),

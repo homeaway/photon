@@ -29,7 +29,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.time.Duration;
-import java.util.concurrent.Executors;
 
 public class LockGetSchedulerTest {
 
@@ -50,8 +49,7 @@ public class LockGetSchedulerTest {
         PhotonBeamReader beamReader = buildPhotonBeamReader();
         beamReader.setBeamUuid(beam.getBeamUuid());
         cache.putPhotonBeamReader(beam, beamReader);
-        PhotonScheduler lockGetScheduler = new LockGetScheduler(Executors.newFixedThreadPool(5),
-                cache, beamReaderLockDao, Executors.newScheduledThreadPool(5), LOCK_THRESHOLD);
+        PhotonScheduler lockGetScheduler = new LockGetScheduler(cache, beamReaderLockDao, LOCK_THRESHOLD);
         lockGetScheduler.start();
         Assert.assertFalse(beamReader.getPhotonBeamReaderLock().isPresent());
         try {

@@ -36,8 +36,8 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
 
     private final Lock lock = new ReentrantLock();
     private final Condition fullCondition = lock.newCondition();
-    private final ExecutorService executorService;
-    private final ScheduledExecutorService scheduledExecutorService;
+    private static ExecutorService executorService;
+    private static ScheduledExecutorService scheduledExecutorService;
     private final ConcurrentMap<String, EventQueueMap<V>> eventQueueMapMap;
     private final ConcurrentMap<String, K> eventQueueKeyMap;
     private final MessageEventHandler<K, V> eventHandler;
@@ -64,20 +64,16 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
     public DefaultAsyncMessageProcessor(final MessageEventHandler<K, V> eventHandler,
                                         final ProcessorManifest<K, V, T> processorManifest,
                                         int maxEvents) {
-        this(Executors.newFixedThreadPool(150), Executors.newScheduledThreadPool(5), Maps.newConcurrentMap(), Maps.newConcurrentMap(),
+        this(Maps.newConcurrentMap(), Maps.newConcurrentMap(),
                 eventHandler, processorManifest, Duration.ofMillis(1), maxEvents);
     }
 
-    public DefaultAsyncMessageProcessor(final ExecutorService executorService,
-                                        final ScheduledExecutorService scheduledExecutorService,
-                                        final ConcurrentMap<String, EventQueueMap<V>> eventQueueMapMap,
+    public DefaultAsyncMessageProcessor(final ConcurrentMap<String, EventQueueMap<V>> eventQueueMapMap,
                                         final ConcurrentMap<String, K> eventQueueKeyMap,
                                         final MessageEventHandler<K, V> eventHandler,
                                         final ProcessorManifest<K, V, T> processorManifest,
                                         Duration processingLoopInterval,
                                         int maxEvents) {
-        this.executorService = executorService;
-        this.scheduledExecutorService = scheduledExecutorService;
         this.eventQueueMapMap = eventQueueMapMap;
         this.eventQueueKeyMap = eventQueueKeyMap;
         this.eventHandler = eventHandler;
@@ -152,9 +148,9 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
     @Override
     public void start() throws Exception {
         if (!isActive()) {
-            scheduledFuture = scheduledExecutorService.scheduleAtFixedRate(() -> eventQueueMapMap.entrySet()
+            scheduledFuture = getScheduledExecutorService().scheduleAtFixedRate(() -> eventQueueMapMap.entrySet()
                     .forEach(e -> e.getValue()
-                            .iterateKeys(k -> executorService.execute(() -> {
+                            .iterateKeys(k -> getExecutorService().execute(() -> {
                                         if (e.getValue().tryQueueLock(k)) {
                                             try {
                                                 while (!e.getValue().queueIsEmpty(k)) {
@@ -196,8 +192,10 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
 
     @Override
     public void shutdown() throws Exception {
-        scheduledExecutorService.shutdown();
-        executorService.shutdown();
+        Optional.ofNullable(scheduledExecutorService)
+                .ifPresent(ScheduledExecutorService::shutdown);
+        Optional.ofNullable(executorService)
+                .ifPresent(ExecutorService::shutdown);
     }
 
     @Override
@@ -213,5 +211,23 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
 
     private boolean isActive(ScheduledFuture<?> scheduledFuture) {
         return !(scheduledFuture.isCancelled() || scheduledFuture.isDone());
+    }
+
+    private ScheduledExecutorService getScheduledExecutorService() {
+        return Optional.ofNullable(scheduledExecutorService)
+                .filter(s -> !s.isShutdown())
+                .orElseGet(() -> {
+                    scheduledExecutorService = Executors.newScheduledThreadPool(5);
+                    return scheduledExecutorService;
+                });
+    }
+
+    private ExecutorService getExecutorService() {
+        return Optional.ofNullable(executorService)
+                .filter(e -> !e.isShutdown())
+                .orElseGet(() -> {
+                    executorService = Executors.newFixedThreadPool(150);
+                    return executorService;
+                });
     }
 }

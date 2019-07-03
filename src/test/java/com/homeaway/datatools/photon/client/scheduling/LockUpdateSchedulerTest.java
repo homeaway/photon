@@ -32,7 +32,6 @@ import org.junit.Test;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.Executors;
 
 public class LockUpdateSchedulerTest {
 
@@ -54,8 +53,7 @@ public class LockUpdateSchedulerTest {
         beamReader.setBeamUuid(beam.getBeamUuid());
         beamReader.setPhotonBeamReaderLock(new PhotonBeamReaderLock(UUID.randomUUID(), start));
         cache.putPhotonBeamReader(beam, beamReader);
-        PhotonScheduler lockUpdateScheduler = new LockUpdateScheduler(Executors.newFixedThreadPool(5),
-                cache, beamReaderLockDao, Executors.newScheduledThreadPool(5), LOCK_THRESHOLD);
+        PhotonScheduler lockUpdateScheduler = new LockUpdateScheduler(cache, beamReaderLockDao, LOCK_THRESHOLD);
         lockUpdateScheduler.start();
         try {
             Thread.sleep(LOCK_THRESHOLD.dividedBy(2).plusMillis(500).toMillis());
@@ -73,8 +71,7 @@ public class LockUpdateSchedulerTest {
         beamReader.setBeamUuid(beam.getBeamUuid());
         beamReader.setPhotonBeamReaderLock(new PhotonBeamReaderLock(UUID.randomUUID(), Instant.now().minus(LOCK_THRESHOLD).minusMillis(100)));
         cache.putPhotonBeamReader(beam, beamReader);
-        PhotonScheduler lockUpdateScheduler = new LockUpdateScheduler(Executors.newFixedThreadPool(5),
-                cache, beamReaderLockDao, Executors.newScheduledThreadPool(5), LOCK_THRESHOLD);
+        PhotonScheduler lockUpdateScheduler = new LockUpdateScheduler(cache, beamReaderLockDao, LOCK_THRESHOLD);
         lockUpdateScheduler.start();
         try {
             Thread.sleep(LOCK_THRESHOLD.dividedBy(2).toMillis());

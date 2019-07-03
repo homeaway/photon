@@ -24,23 +24,17 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 public class LockGetScheduler extends AbstractPhotonScheduler {
 
-    private final ExecutorService executorService;
     private final BeamReaderCache beamReaderCache;
     private final BeamReaderLockDao beamReaderLockDao;
 
-    public LockGetScheduler(final ExecutorService executorService,
-                            final BeamReaderCache beamReaderCache,
+    public LockGetScheduler(final BeamReaderCache beamReaderCache,
                             final BeamReaderLockDao beamReaderLockDao,
-                            final ScheduledExecutorService scheduledExecutorService,
                             Duration lockThreshold) {
-        super(scheduledExecutorService, lockThreshold);
-        this.executorService = executorService;
+        super(lockThreshold);
         this.beamReaderCache = beamReaderCache;
         this.beamReaderLockDao = beamReaderLockDao;
     }
@@ -52,7 +46,7 @@ public class LockGetScheduler extends AbstractPhotonScheduler {
                 .stream()
                 .flatMap(v -> v.values().stream())
                 .filter(br -> !br.getPhotonBeamReader().getPhotonBeamReaderLock().isPresent())
-                .forEach(br -> executorService.execute(() -> {
+                .forEach(br -> getExecutorService(50).execute(() -> {
                     try {
                         Optional<PhotonBeamReaderLock> lock = beamReaderLockDao.getAvailablePhotonBeamLock(br.getPhotonBeamReader());
                         if (lock.isPresent()) {
@@ -70,10 +64,5 @@ public class LockGetScheduler extends AbstractPhotonScheduler {
                         log.error("Could not get beam reader lock.", e);
                     }
                 }));
-    }
-
-    @Override
-    void doShutDown() throws Exception {
-        executorService.shutdown();
     }
 }

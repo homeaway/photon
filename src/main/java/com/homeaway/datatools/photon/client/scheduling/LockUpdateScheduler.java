@@ -21,24 +21,18 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 public class LockUpdateScheduler extends AbstractPhotonScheduler {
 
-    private final ExecutorService executorService;
     private final BeamReaderCache beamReaderCache;
     private final BeamReaderLockDao beamReaderLockDao;
     private Duration lockThreshold;
 
-    public LockUpdateScheduler(final ExecutorService executorService,
-                               final BeamReaderCache beamReaderCache,
+    public LockUpdateScheduler(final BeamReaderCache beamReaderCache,
                                final BeamReaderLockDao beamReaderLockDao,
-                               final ScheduledExecutorService scheduledExecutorService,
                                Duration lockThreshold) {
-        super(scheduledExecutorService, lockThreshold.dividedBy(2));
-        this.executorService = executorService;
+        super(lockThreshold.dividedBy(2));
         this.beamReaderCache = beamReaderCache;
         this.beamReaderLockDao = beamReaderLockDao;
         this.lockThreshold = lockThreshold;
@@ -51,7 +45,7 @@ public class LockUpdateScheduler extends AbstractPhotonScheduler {
                 .stream()
                 .flatMap(v -> v.values().stream())
                 .filter(br -> br.getPhotonBeamReader().getPhotonBeamReaderLock().isPresent())
-                .forEach(br -> executorService.execute(() -> {
+                .forEach(br -> getExecutorService(50).execute(() -> {
                     try {
                         if (br.getConsumerGroupLock().tryLock()) {
                             if (br.getPhotonBeamReader().getPhotonBeamReaderLock().isPresent()) {
@@ -72,10 +66,5 @@ public class LockUpdateScheduler extends AbstractPhotonScheduler {
                         }
                     }
                 }));
-    }
-
-    @Override
-    void doShutDown() throws Exception {
-        executorService.shutdown();
     }
 }

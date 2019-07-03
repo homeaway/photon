@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -26,13 +28,12 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public abstract class AbstractPhotonScheduler implements PhotonScheduler {
 
-    private final ScheduledExecutorService scheduledExecutorService;
+    private static ExecutorService executorService;
+    private static ScheduledExecutorService scheduledExecutorService;
     private volatile Duration pollingInterval;
     private ScheduledFuture<?> scheduledFuture;
 
-    public AbstractPhotonScheduler(final ScheduledExecutorService scheduledExecutorService,
-                                   final Duration pollingInterval) {
-        this.scheduledExecutorService = scheduledExecutorService;
+    public AbstractPhotonScheduler(final Duration pollingInterval) {
         this.pollingInterval = pollingInterval;
     }
 
@@ -61,7 +62,7 @@ public abstract class AbstractPhotonScheduler implements PhotonScheduler {
     @Override
     public void start() throws Exception {
         if (!isActive()) {
-            scheduledFuture = scheduledExecutorService.scheduleAtFixedRate(() ->  {
+            scheduledFuture = getScheduledExecutorService().scheduleAtFixedRate(() ->  {
                 try {
                     executeTask();
                 } catch (Exception e) {
@@ -84,11 +85,31 @@ public abstract class AbstractPhotonScheduler implements PhotonScheduler {
 
     @Override
     public void shutdown() throws Exception {
-        scheduledExecutorService.shutdown();
-        doShutDown();
+        Optional.ofNullable(scheduledExecutorService)
+                .ifPresent(ScheduledExecutorService::shutdown);
+        Optional.ofNullable(executorService)
+                .ifPresent(ExecutorService::shutdown);
     }
+
+    private ScheduledExecutorService getScheduledExecutorService() {
+        return Optional.ofNullable(scheduledExecutorService)
+                .filter(s -> !s.isShutdown())
+                .orElseGet(() -> {
+                    scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+                    return scheduledExecutorService;
+                });
+    }
+
+    protected ExecutorService getExecutorService(int poolSize) {
+        return Optional.ofNullable(executorService)
+                .filter(e -> !e.isShutdown())
+                .orElseGet(() -> {
+                    executorService = Executors.newFixedThreadPool(poolSize);
+                    return executorService;
+                });
+    }
+
 
     abstract void executeTask();
 
-    abstract void doShutDown() throws Exception;
 }

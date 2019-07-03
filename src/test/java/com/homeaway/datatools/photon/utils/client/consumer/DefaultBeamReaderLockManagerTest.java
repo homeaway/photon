@@ -31,7 +31,6 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.Executors;
 
 public class DefaultBeamReaderLockManagerTest {
 
@@ -55,9 +54,7 @@ public class DefaultBeamReaderLockManagerTest {
         PhotonBeamReader beamReader = buildPhotonBeamReader();
         beamReader.setBeamUuid(beam.getBeamUuid());
         cache.putPhotonBeamReader(beam, beamReader);
-        DefaultBeamReaderLockManager lockManager = new DefaultBeamReaderLockManager(Executors.newScheduledThreadPool(5),
-                Executors.newFixedThreadPool(50), cache,
-                beamReaderLockDao, LOCK_THRESHOLD);
+        DefaultBeamReaderLockManager lockManager = new DefaultBeamReaderLockManager(cache, beamReaderLockDao, LOCK_THRESHOLD);
         lockManager.start();
         Assert.assertFalse(beamReader.getPhotonBeamReaderLock().isPresent());
         try {
@@ -77,12 +74,8 @@ public class DefaultBeamReaderLockManagerTest {
         beamReaderB.setBeamUuid(beam.getBeamUuid());
         cache.putPhotonBeamReader(beam, beamReaderA);
         cacheB.putPhotonBeamReader(beam, beamReaderB);
-        DefaultBeamReaderLockManager lockManagerA = new DefaultBeamReaderLockManager(Executors.newScheduledThreadPool(5),
-                Executors.newFixedThreadPool(50), cache,
-                beamReaderLockDao, LOCK_THRESHOLD);
-        DefaultBeamReaderLockManager lockManagerB = new DefaultBeamReaderLockManager(Executors.newScheduledThreadPool(5),
-                Executors.newFixedThreadPool(50), cacheB,
-                beamReaderLockDao, LOCK_THRESHOLD);
+        DefaultBeamReaderLockManager lockManagerA = new DefaultBeamReaderLockManager(cache, beamReaderLockDao, LOCK_THRESHOLD);
+        DefaultBeamReaderLockManager lockManagerB = new DefaultBeamReaderLockManager(cacheB, beamReaderLockDao, LOCK_THRESHOLD);
         lockManagerA.start();
         lockManagerB.start();
         Assert.assertFalse(beamReaderA.getPhotonBeamReaderLock().isPresent());
@@ -119,9 +112,7 @@ public class DefaultBeamReaderLockManagerTest {
         PhotonBeamReader beamReader = buildPhotonBeamReader();
         beamReader.setBeamUuid(beam.getBeamUuid());
         cache.putPhotonBeamReader(beam, beamReader);
-        DefaultBeamReaderLockManager lockManager = new DefaultBeamReaderLockManager(Executors.newScheduledThreadPool(5),
-                Executors.newFixedThreadPool(50), cache,
-                beamReaderLockDao, LOCK_THRESHOLD);
+        DefaultBeamReaderLockManager lockManager = new DefaultBeamReaderLockManager(cache, beamReaderLockDao, LOCK_THRESHOLD);
         lockManager.start();
         Assert.assertFalse(beamReader.getPhotonBeamReaderLock().isPresent());
         try {

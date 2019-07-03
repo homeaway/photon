@@ -30,9 +30,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 public class DefaultBeamReaderScheduler extends AbstractPhotonScheduler {
@@ -43,7 +40,6 @@ public class DefaultBeamReaderScheduler extends AbstractPhotonScheduler {
     private final BeamReaderCache beamReaderCache;
     private final BeamReaderExecutionFunction execution;
     private final BeamConsumer beamConsumer;
-    private final ExecutorService executorService;
     private final ConcurrentMap<String, Instant> beamReaderLastScheduled;
 
 
@@ -52,8 +48,7 @@ public class DefaultBeamReaderScheduler extends AbstractPhotonScheduler {
                                       final BeamReaderCache beamReaderCache,
                                       final BeamConsumer beamConsumer,
                                       final BeamReaderExecutionFunction execution) {
-        this(beamReaderConfigManager, beamCache, beamReaderCache, beamConsumer, execution, Maps.newConcurrentMap(),
-                Executors.newScheduledThreadPool(5), Executors.newFixedThreadPool(100));
+        this(beamReaderConfigManager, beamCache, beamReaderCache, beamConsumer, execution, Maps.newConcurrentMap());
     }
 
     public DefaultBeamReaderScheduler(final BeamReaderConfigManager beamReaderConfigManager,
@@ -61,17 +56,14 @@ public class DefaultBeamReaderScheduler extends AbstractPhotonScheduler {
                                       final BeamReaderCache beamReaderCache,
                                       final BeamConsumer beamConsumer,
                                       final BeamReaderExecutionFunction execution,
-                                      final ConcurrentMap<String, Instant> beamReaderLastScheduled,
-                                      final ScheduledExecutorService scheduledExecutorService,
-                                      final ExecutorService executorService) {
-        super(scheduledExecutorService, DEFAULT_POLLING_INTERVAL);
+                                      final ConcurrentMap<String, Instant> beamReaderLastScheduled) {
+        super(DEFAULT_POLLING_INTERVAL);
         this.beamReaderConfigManager = beamReaderConfigManager;
         this.beamCache = beamCache;
         this.beamReaderCache = beamReaderCache;
         this.beamConsumer = beamConsumer;
         this.execution = execution;
         this.beamReaderLastScheduled = beamReaderLastScheduled;
-        this.executorService = executorService;
     }
 
     @Override
@@ -85,7 +77,7 @@ public class DefaultBeamReaderScheduler extends AbstractPhotonScheduler {
                 if (wrapper.isPresent()) {
                     if (wrapper.get().getPhotonBeamReader().getPhotonBeamReaderLock().isPresent()) {
                         if (!wrapper.get().getLock().isLocked()) {
-                            executorService.execute(() ->
+                            getExecutorService(100).execute(() ->
                                     execution.execute(wrapper.get(), photonMessageHandler, beamCache, beamReaderConfigManager, beamConsumer, photonBeamReaderConfig.getIsAsync()));
                         }
                     }
@@ -96,10 +88,5 @@ public class DefaultBeamReaderScheduler extends AbstractPhotonScheduler {
                 }
             }
         });
-    }
-
-    @Override
-    void doShutDown() throws Exception {
-        executorService.shutdown();
     }
 }

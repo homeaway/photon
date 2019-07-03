@@ -23,9 +23,6 @@ import com.homeaway.datatools.photon.dao.beam.BeamReaderLockDao;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 public class DefaultBeamReaderLockManager implements BeamReaderLockManager {
@@ -33,23 +30,11 @@ public class DefaultBeamReaderLockManager implements BeamReaderLockManager {
     private final PhotonScheduler lockUpdateScheduler;
     private final PhotonScheduler lockGetScheduler;
 
-
     public DefaultBeamReaderLockManager(final BeamReaderCache beamReaderCache,
                                         final BeamReaderLockDao beamReaderLockDao,
                                         final Duration lockThreshold) {
-        this(Executors.newScheduledThreadPool(5), Executors.newFixedThreadPool(50), beamReaderCache,
-                beamReaderLockDao, lockThreshold);
-    }
-
-    public DefaultBeamReaderLockManager(final ScheduledExecutorService scheduledExecutorService,
-                                        final ExecutorService executorService,
-                                        final BeamReaderCache beamReaderCache,
-                                        final BeamReaderLockDao beamReaderLockDao,
-                                        final Duration lockThreshold) {
-        this(new LockUpdateScheduler(executorService, beamReaderCache, beamReaderLockDao,
-                        scheduledExecutorService, lockThreshold),
-                new LockGetScheduler(executorService, beamReaderCache, beamReaderLockDao,
-                        scheduledExecutorService, lockThreshold));
+        this(new LockUpdateScheduler(beamReaderCache, beamReaderLockDao, lockThreshold),
+                new LockGetScheduler(beamReaderCache, beamReaderLockDao, lockThreshold));
     }
 
     public DefaultBeamReaderLockManager(final PhotonScheduler lockUpdateScheduler,
