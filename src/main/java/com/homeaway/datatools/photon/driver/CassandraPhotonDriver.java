@@ -115,7 +115,7 @@ public class CassandraPhotonDriver implements PhotonDriver {
     public BeamDataDao getBeamDataDao() {
         return Optional.ofNullable(beamDataDao)
                 .orElseGet(() -> {
-                    beamDataDao = new CassandraBeamDataDao(getSession(properties), partitionHelper, beamDataManifestDao);
+                    beamDataDao = new CassandraBeamDataDao(getSession(properties), getPartitionHelper(), getBeamDataManifestDao());
                     return beamDataDao;
                 });
     }
@@ -124,7 +124,7 @@ public class CassandraPhotonDriver implements PhotonDriver {
     public BeamDataManifestDao getBeamDataManifestDao() {
         return Optional.ofNullable(beamDataManifestDao)
                 .orElseGet(() -> {
-                    beamDataManifestDao = new CassandraBeamDataManifestDao(getSession(properties), partitionHelper);
+                    beamDataManifestDao = new CassandraBeamDataManifestDao(getSession(properties), getPartitionHelper());
                     return beamDataManifestDao;
                 });
     }
@@ -133,7 +133,7 @@ public class CassandraPhotonDriver implements PhotonDriver {
     public BeamProcessedDao getBeamProcessedDao() {
         return Optional.ofNullable(beamProcessedDao)
                 .orElseGet(() -> {
-                    beamProcessedDao = new CassandraBeamProcessedDao(getMultiRegionSession(properties), partitionHelper);
+                    beamProcessedDao = new CassandraBeamProcessedDao(getMultiRegionSession(properties), getPartitionHelper());
                     return beamProcessedDao;
                 });
     }
