@@ -22,7 +22,7 @@ Make sure you include the Photon dependency below in your code
     <dependency>
         <groupId>com.homeaway.datatools.photon</groupId>
         <artifactId>photon</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.8</version>
     </dependency>
 </dependencies>
 ```
