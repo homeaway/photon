@@ -15,14 +15,14 @@ public class EnvironmentVariablesUtils {
         final String envVarValue = System.getenv(envVarName);
         if (envVarValue == null) {
             log.info(
-                    "Environment variable {} is not set. Will use the default {} ms value.",
+                    "Environment variable {} is not set. Will use the default {} value.",
                     envVarName,
                     defaultValue
             );
             result = defaultValue;
         } else {
             log.info(
-                    "ProcessingLoopInterval value read from {} environment variable is {} ms.",
+                    "Environment variable {} is set to {}",
                     envVarName,
                     envVarValue
             );
