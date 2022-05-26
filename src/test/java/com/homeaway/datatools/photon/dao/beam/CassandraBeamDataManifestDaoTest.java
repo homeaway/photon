@@ -50,6 +50,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class CassandraBeamDataManifestDaoTest {
 
@@ -183,8 +185,21 @@ public class CassandraBeamDataManifestDaoTest {
             now = now.plus(1L, ChronoUnit.MINUTES);
         }
         try {
-            Assert.assertEquals(20, Futures.successfulAsList(resultSetFutureList).get()
-                    .stream().mapToInt(PhotonRowSet::getSize).sum());
+            List<PhotonRowSet> photonRowSetsFromSuccessfulFutures = Futures.successfulAsList(resultSetFutureList).get();
+            final int actualCount = photonRowSetsFromSuccessfulFutures
+                    .stream().mapToInt(PhotonRowSet::getSize).sum();
+            Assert.assertEquals(
+                    String.format(
+                            "Expected total of 20 elements in following list, but got %s. The list is: %s",
+                            actualCount,
+                            photonRowSetsFromSuccessfulFutures.stream()
+                                    .flatMap(x -> StreamSupport.stream(x.spliterator(), false))
+                                    .map(Object::toString)
+                                    .collect(Collectors.joining(",\n"))
+                    ),
+                    20,
+                    actualCount
+            );
         } catch (ExecutionException | InterruptedException e) {
 
         }
