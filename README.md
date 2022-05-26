@@ -14,7 +14,16 @@ replication.
 4. Native cross data center replication.
 
 ## Getting Started
-Once you have setup a Cassandra cluster then deploy the necessary schema located [here link](https://github.homeawaycorp.com/coe-data-tools/photon/tree/master/src/main/resources/cassandra).
+Once you have setup a Cassandra cluster then deploy the necessary schema located in 
+[homeaway github (old version)](https://github.homeawaycorp.com/coe-data-tools/photon/tree/master/src/main/resources/cassandra)
+or in [Expedia Group github (newer version)](https://github.expedia.biz/eg-edv-datasync/datasync-schema).
+
+You need to use Java version compatible with your Cassandra version to execute unit-tests for this project.
+E.g. if you use Cassandra 3, you need to use Java 8.
+Higher Java versions will cause errors like "NoHostAvailable" failures in unit tests.
+You can change JDK by setting JAVA_HOME environment variable in the shell, where you run the tests.
+
+Warning: some unit tests are observed to fail occasionally, then succeed without any code changes.
 
 Make sure you include the Photon dependency below in your code
 ```xml

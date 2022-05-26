@@ -17,6 +17,8 @@ package com.homeaway.datatools.photon.utils.processing;
 
 import com.google.common.collect.Maps;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
+import com.homeaway.datatools.photon.utils.EnvironmentVariablesUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -65,7 +67,7 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
                                         final ProcessorManifest<K, V, T> processorManifest,
                                         int maxEvents) {
         this(Maps.newConcurrentMap(), Maps.newConcurrentMap(),
-                eventHandler, processorManifest, Duration.ofMillis(1), maxEvents);
+                eventHandler, processorManifest, getDefaultProcessingLoopInterval(), maxEvents);
     }
 
     public DefaultAsyncMessageProcessor(final ConcurrentMap<String, EventQueueMap<V>> eventQueueMapMap,
@@ -81,6 +83,10 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
         this.processingLoopInterval = processingLoopInterval;
         this.maxEvents = maxEvents;
         this.count = new LongAdder();
+        log.info(
+                "DefaultAsyncMessageProcessor created with processingLoopInterval={} ms",
+                processingLoopInterval.toMillis()
+        );
     }
 
     @Override
@@ -229,5 +235,16 @@ public class DefaultAsyncMessageProcessor<K extends ProcessorKey, V extends Proc
                     executorService = Executors.newFixedThreadPool(150);
                     return executorService;
                 });
+    }
+
+    /**
+     * Gets value of DEFAULT_MESSAGE_PROCESSOR_LOOP_INTERVAL_MS environment variable if it is set.
+     * Otherwise, returns a default value.
+     */
+    protected static Duration getDefaultProcessingLoopInterval() {
+        final String envVarName = "DEFAULT_MESSAGE_PROCESSOR_LOOP_INTERVAL_MS";
+        final Long defaultValue = 1L;
+        long defaultProcessingLoopInterval = EnvironmentVariablesUtils.getLongOrUseDefault(envVarName, defaultValue, log);
+        return Duration.ofMillis(defaultProcessingLoopInterval);
     }
 }
