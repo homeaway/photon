@@ -49,7 +49,7 @@
 		<coverage.class>0</coverage.class>
 		<coverage.method>0</coverage.method>
 		<coverage.jacoco.pluginVersion>0.8.3</coverage.jacoco.pluginVersion>
-		<jackson.version>2.9.9</jackson.version>
+		<jackson.version>2.12.7.1</jackson.version>
 		<dropwizard.version>1.0.7</dropwizard.version>
 		<junit.version>4.11</junit.version>
 		<mokito.version>1.9.5</mokito.version>
